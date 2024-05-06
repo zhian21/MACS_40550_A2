@@ -20,15 +20,15 @@ class PDAgent(Agent):
         """
         A single step of the agent.
         """
-        if self.strategy == "Majority Rule":
-            self.apply_majority_rule()
-        elif self.strategy == "Best Neighbor":
-            self.apply_best_neighbor_strategy()
-        elif self.strategy == "Random":
-            self.copy_random_neighbor()
+        if self.strategy == "Frequency Dependent Learning":
+            self.frequency_dependent_learning()
+        elif self.strategy == "Success Base Learning":
+            self.success_base_learning ()
+        elif self.strategy == "Random Copying":
+            self.random_copying()
         self.calculate_payoff()    
 
-    def apply_majority_rule(self):
+    def frequency_dependent_learning(self):
         """
         apply the majority rule strategy where the agent adopts the move (either 'C' or 'D')
         that is most common among its immediate neighbors. In case of a tie, choose randomly.
@@ -41,7 +41,7 @@ class PDAgent(Agent):
         else:
             self.move = random.choice(["C", "D"])
 
-    def apply_best_neighbor_strategy(self):
+    def success_base_learning(self):
         """
         apply the best neighbor strategy where the agent mimics the behavior of the neighbor
         with the highest score. If the agent itself has the highest score, it retains its current move.
@@ -50,7 +50,7 @@ class PDAgent(Agent):
         best_neighbor = max(neighbors, key=lambda a: a.score)
         self.move = best_neighbor.move
 
-    def copy_random_neighbor(self):
+    def random_copying(self):
         """
         apply the random strategy where the agent randomly selects one of its immediate neighbors
         and copies their move.

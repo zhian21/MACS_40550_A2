@@ -40,63 +40,53 @@ class StrategyTextElement(TextElement):
         Returns:
             An HTML-formatted string of strategy counts.
         """
-        majority = len([a for a in model.schedule.agents if a.strategy == "Majority Rule"])
-        best_neighbor = len([a for a in model.schedule.agents if a.strategy == "Best Neighbor"])
-        random_strategy = len([a for a in model.schedule.agents if a.strategy == "Random"])
-        return "Majority Rule Agents: {}<br>Best Neighbor Agents: {}<br>Random Agents: {}".format(
-            majority, best_neighbor, random_strategy
+        frequency_dependent = len([a for a in model.schedule.agents if a.strategy == "Frequency Dependent Learning"])
+        success_base = len([a for a in model.schedule.agents if a.strategy == "Success Base Learning"])
+        random_copying = len([a for a in model.schedule.agents if a.strategy == "Random Copying"])
+        return "Frequency Dependent Learning Agents: {}<br>Success Base Learning Agents: {}<br>Random Copying Agents: {}".format(
+            frequency_dependent, success_base, random_copying
         )
 
-# instantiate the StrategyTextElement.
+# Instantiate the StrategyTextElement.
 strategy_text_element = StrategyTextElement()
 
-# define a chart module for the average score by strategy.
+# Define a chart module for the average score by strategy.
 average_score_chart = ChartModule(
     [
-        {"Label": "Average_Score_Majority", "Color": "Blue"},
-        {"Label": "Average_Score_Best_Neighbor", "Color": "Green"},
-        {"Label": "Average_Score_Random", "Color": "Red"}
+        {"Label": "Average Score(Frequency Dependent)", "Color": "Blue"},
+        {"Label": "Average Score(Success Base)", "Color": "Green"},
+        {"Label": "Average Score(Random Copying)", "Color": "Red"}
     ],
     data_collector_name='datacollector'
 )
 
-# define a chart module for the number of cooperating and defecting agents.
+# Define a chart module for the number of cooperating and defecting agents.
 cooperation_chart = ChartModule(
     [
-        {"Label": "Cooperating_Agents", "Color": "Blue"},
-        {"Label": "Defecting_Agents", "Color": "Red"}
+        {"Label": "Cooperating Agents", "Color": "Blue"},
+        {"Label": "Defecting Agents", "Color": "Red"}
     ],
     data_collector_name='datacollector'
 )
 
-# define the visualization grid.
+# Define the visualization grid.
 grid = CanvasGrid(agent_portrayal, 50, 50, 500, 500)
 
-# define the model parameters that can be adjusted in the server interface.
+# Define the model parameters that can be adjusted in the server interface.
 model_params = {
-    "ratio_choice": Choice(
-        "Strategy Ratio Configuration",
-        choices=["equal", "more_majority", "more_best", "more_random"],
-        value="equal"
-    ),
-    "initial_cooperate_prob": Slider(
-        "Initial Cooperation Probability", 0.5, 0.0, 1.0, 0.1
-    ),
-    "payoff_CC": Slider(
-        "Payoff for both cooperating", 1, 0, 10, 1
-    ),
-    "payoff_CD": Slider(
-        "Payoff for cooperating when the other defects", 0, 0, 10, 1
-    ),
-    "payoff_DC": Slider(
-        "Payoff for defecting when the other cooperates", 2, 0, 10, 1
-    ),
-    "payoff_DD": Slider(
-        "Payoff for both defecting", 0, 0, 10, 1
-    )
+    "initial_cooperate_prob": Slider("Initial Cooperation Probability", 0.5, 0.0, 1.0, 0.1),
+    "primary_strategy": Choice("Primary Strategy Type", 
+                               choices=["Frequency Dependent Learning", 
+                                        "Success Base Learning", "Random Copying"], 
+                                        value="Frequency Dependent Learning"),
+    "primary_ratio": Slider("The Distribution of Primary Strategy", 0.333, 0.333, 1.0, 0.1),
+    "payoff_CC": Slider("Payoff for both cooperating(CC)", 1, 0, 10, 1),
+    "payoff_CD": Slider("Payoff for cooperating when the other defects(CD)", 0, 0, 10, 1),
+    "payoff_DC": Slider("Payoff for defecting when the other cooperates(DC)", 2, 0, 10, 1),
+    "payoff_DD": Slider("Payoff for both defecting(DD)", 0, 0, 10, 1)
 }
 
-# initialize model parameters on server launch.
+# Initialize model parameters on server launch.
 def server_launch_handler(model):
     """
     Server launch handler function that sets initial model parameters.
@@ -104,9 +94,10 @@ def server_launch_handler(model):
     Args:
         model: The model instance being initialized.
     """
-    ratio_choice = model.user_params["ratio_choice"]
     initial_cooperate_prob = model.user_params["initial_cooperate_prob"]
-    model.set_ratios_by_choice(ratio_choice)
+    primary_ratio = model.user_params["primary_ratio"]
+    primary_strategy = model.user_params["primary_strategy"]
+    model.set_ratios_by_choice(primary_ratio, primary_strategy)
     model.initial_cooperate_prob = initial_cooperate_prob
     model.payoff_matrix = {
         ('C', 'C'): model.user_params["payoff_CC"],
@@ -115,7 +106,7 @@ def server_launch_handler(model):
         ('D', 'D'): model.user_params["payoff_DD"]
     }
 
-# configure and launch the ModularServer.
+# Configure and launch the ModularServer.
 server = ModularServer(
     PdGrid,
     [grid, strategy_text_element, average_score_chart, cooperation_chart],
