@@ -1,28 +1,59 @@
-from mesa.visualization.ModularVisualization import ModularServer, TextElement
-from mesa.visualization.modules import CanvasGrid, ChartModule
+import logging
+import mesa
+from mesa.visualization import ModularServer
+from mesa.visualization.modules import NetworkModule, ChartModule, TextElement
 from mesa.visualization.UserParam import Choice, Slider
-from .model import ParentalLearningModel
+from .model import ParentalLearningModel 
 
-def agent_portrayal(agent):
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+logger.debug("Starting server setup...")
+
+def network_portrayal(G):
+    def node_color(agent):
+        return "blue" if agent.strategy == "Individual Learning" else "green"
+
+    def edge_color(agent1, agent2):
+        return "#e8e8e8"
+
+    def edge_width(agent1, agent2):
+        return 2
+
+    def get_agents(source, target):
+        return G.nodes[source]["agent"][0], G.nodes[target]["agent"][0]
+
     portrayal = {
-        "Shape": "rect",
-        "w": 0.8,
-        "h": 0.8,
-        "Filled": "true",
-        "Layer": 0,
-        "Color": "blue" if agent.strategy == "Individual Learning" else "green",
-        "text": round(agent.time_investment, 1),
-        "text_color": "white"
+        "nodes": [
+            {
+                "id": node_id,
+                "size": 6,
+                "color": node_color(agents[0]),
+                "tooltip": f"id: {agents[0].unique_id}<br>strategy: {agents[0].strategy}",
+            }
+            for node_id, agents in G.nodes.data("agent")
+        ],
+        "edges": [
+            {
+                "source": source,
+                "target": target,
+                "color": edge_color(*get_agents(source, target)),
+                "width": edge_width(*get_agents(source, target)),
+            }
+            for source, target in G.edges
+        ],
     }
+
     return portrayal
+
+network = NetworkModule(network_portrayal, 500, 500)
 
 class StrategyTextElement(TextElement):
     def render(self, model):
         individual_learning = len([a for a in model.schedule.agents if a.strategy == "Individual Learning"])
         social_learning = len([a for a in model.schedule.agents if a.strategy != "Individual Learning"])
-        return "Individual Learning Agents: {}<br>Social Learning Agents: {}".format(
-            individual_learning, social_learning
-        )
+        return f"Individual Learning Agents: {individual_learning}<br>Social Learning Agents: {social_learning}"
 
 strategy_text_element = StrategyTextElement()
 
@@ -37,8 +68,6 @@ average_score_chart = ChartModule(
     ],
     data_collector_name='datacollector'
 )
-
-grid = CanvasGrid(agent_portrayal, 50, 50, 500, 500)
 
 model_params = {
     "initial_density": Slider("Initial Density of Agents", 0.8, 0.1, 1.0, 0.1),
@@ -73,12 +102,14 @@ model_params = {
     "low_switch_probability": Slider("Low Education: Switch Probability", 0.5, 0, 1, 0.01)
 }
 
-server = ModularServer(
-    ParentalLearningModel,
-    [grid, strategy_text_element, average_score_chart],
-    "Parental Learning Strategies Model",
-    model_params
-)
-
-server.port = 8521  # The default
-server.launch()
+try:
+    server = mesa.visualization.ModularServer(
+        ParentalLearningModel,
+        [network, strategy_text_element, average_score_chart],
+        "Parental Learning Strategies Model",
+        model_params
+    )
+    server.port = 8521 
+    logger.debug("Server setup complete.")
+except Exception as e:
+    logger.exception("Error during server setup: %s", e)
